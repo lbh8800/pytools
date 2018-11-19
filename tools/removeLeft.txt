@@ -1,0 +1,152 @@
+from PIL import Image
+import os 
+import re
+import hashlib
+from time import time
+
+src_folder = "C:/src"
+tar_folder = "C:/tar"
+backup_folder = "C:/backup"
+global gNeed
+regular = re.compile(r'^(.*)\.(jpg|jpeg|bmp|gif|png|JPG|JPEG|BMP|GIF|PNG)$')
+def isCrust(pix):
+    global gNeed
+    return sum(pix) < gNeed
+
+def hCheck(img, y, step = 2):
+    count = 0
+    width = img.size[0]
+    for x in xrange(75, width-75, step):
+        if isCrust(img.getpixel((x, y))):
+            count += 1
+        if count > (width-150-step*3)/step:
+            return True
+    return False
+
+def vCheck(img, x, step = 2):
+    count = 0
+    #height = img.size[1]
+    for y in xrange(210, 260, step):
+        if isCrust(img.getpixel((x, y))):
+            count += 1
+    if count < 4:
+        return False
+    for y in xrange(310, 400, step):
+        if isCrust(img.getpixel((x, y))):
+            count += 1
+    if count < 21:
+        return False
+    for y in xrange(170, 180, step):
+        if isCrust(img.getpixel((x, y))):
+            count += 1
+        if count > 65:
+            return True
+    return False
+
+def boundaryFinder(img,crust_side,core_side,checker):
+    if not checker(img,crust_side):
+        return crust_side
+    if checker(img,core_side):
+        return core_side
+
+    mid = (crust_side + core_side) / 2
+    while  mid != core_side and mid != crust_side:
+        if checker(img,mid):
+            crust_side = mid
+        else:
+            core_side = mid
+        mid = (crust_side + core_side) / 2
+    return core_side
+    pass
+
+def handleImage(filename,tar):
+    img = Image.open(os.path.join(src_folder,filename))
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    width, height = img.size
+
+    global gNeed
+    gNeed = 200
+    left = boundaryFinder(img, 0, width/2, vCheck)
+    
+        
+    right = width
+    top = 0
+    bottom = height
+
+    rect = (left,top,right,bottom)
+    #print rect
+    if left >  10:
+        region = img.crop(rect)
+        region.save(os.path.join(tar,filename),'PNG')
+        os.rename(os.path.join(src_folder,filename),os.path.join(backup_folder,filename))
+    pass
+
+def folderCheck(foldername):
+    if foldername:
+        if not os.path.exists(foldername):
+            os.mkdir(foldername) 
+            print "Info: Folder \"%s\" created" % foldername
+        elif not os.path.isdir(foldername):
+            print "Error: Folder \"%s\" conflict" % foldername
+            return False
+    return True
+    pass
+
+def del_file(path):
+    ls = os.listdir(path)
+    for i in ls:
+        c_path = os.path.join(path, i)
+        if os.path.isdir(c_path):
+            del_file(c_path)
+        else:
+            os.remove(c_path)
+    pass
+def RemoverRePic(dirPath):
+    quantity = 0
+    for childPath in os.listdir(unicode(dirPath)):
+        childPath = dirPath + '/'  + childPath
+        if os.path.isdir(childPath):
+            quantity += RemoverRePic(childPath)
+        else:
+            if regular.match(childPath):
+               
+                    
+                img = Image.open(childPath)
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                width, height = img.size
+
+                global gNeed
+                gNeed = 200
+                left = boundaryFinder(img, 0, width/2, vCheck)
+
+
+                right = width
+                top = 0
+                bottom = height
+
+                rect = (left,top,right,bottom)
+                #print rect
+                if left >  10:
+                    region = img.crop(rect)
+                    region.save(childPath,'PNG')
+                    quantity += 1
+                    os.rename(childPath,os.path.join(backup_folder,(childPath.split("/")[-1])))
+                pass
+                    
+    return quantity
+def main():
+    if folderCheck(tar_folder) and folderCheck(src_folder) and folderCheck(backup_folder):
+        del_file(tar_folder)
+        del_file(backup_folder)
+        for filename in os.listdir(src_folder):
+            if filename.split('.')[-1].upper() in ("JPG","JPEG","PNG","BMP","GIF"):
+                handleImage(filename,tar_folder)
+ #               os.rename(os.path.join(src_folder,filename),os.path.join(backup_folder,filename))
+        pass
+
+if __name__ == '__main__':
+    print 'start'
+    print RemoverRePic(src_folder)
+    print "end"

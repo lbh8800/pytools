@@ -1,0 +1,29 @@
+import os
+import re
+import hashlib
+from time import time
+rootPath = 'C:/src'    源文件目录
+backupPath = 'C:/bak'	重复的文件目录
+picDic = {}
+regular = re.compile(r'^(.*)\.(jpg|jpeg|bmp|gif|png|JPG|JPEG|BMP|GIF|PNG)$')
+def RemoverRePic(dirPath):
+    quantity = 0
+    for childPath in os.listdir(unicode(dirPath)):
+        childPath = dirPath + '/'  + childPath
+        if os.path.isdir(childPath):
+            quantity += RemoverRePic(childPath)
+        else:
+            if regular.match(childPath):
+                pic = open(childPath, 'rb')
+                picMd5 = hashlib.md5(pic.read()).hexdigest()
+                pic.close()
+                if picDic.has_key(picMd5):
+                    newPath = backupPath + '/'  + childPath.split("/")[-1]
+                    os.rename(childPath, newPath)
+                    quantity += 1
+                else:
+                    picDic[picMd5] = childPath
+    return quantity
+print 'start:'
+print RemoverRePic(rootPath)
+print 'end:'
